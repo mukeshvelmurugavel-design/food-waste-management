@@ -289,33 +289,61 @@
     }
 
     // Render listings
-    function renderListings(){
-      const container = $('#listings'); container.innerHTML='';
-      const search = $('#search').value.toLowerCase();
-      const category = $('#filter-category').value;
-      const filtered = state.listings.filter(l => {
-        if(category && l.category !== category) return false;
-        if(search && !(l.foodType.toLowerCase().includes(search) || l.location.toLowerCase().includes(search))) return false;
-        return l.status !== 'expired';
-      });
-      $('#list-count').textContent = filtered.length + ' items';
-      filtered.forEach(l => {
-        const d = document.createElement('div'); d.className='listing';
-        // Replace your current d.innerHTML block with this exact code:
-d.innerHTML = `
-  <h3>${escapeHtml(l.foodType)}</h3>
-  <div class='meta'>By ${escapeHtml(l.donorName)} • ${escapeHtml(l.quantity)} • <span class='pill'>${escapeHtml(l.category)}</span></div>
-  <div class='meta'>Pickup: ${escapeHtml(l.location)} • Expires: ${formatDate(l.expiry)}</div>
-  <p style='margin:8px 0'>${escapeHtml(l.notes || '')}</p>
-  <div style='display:flex;gap:8px;margin-top:8px'>
-    <button class='btn' data-id='${l.id}' onclick='requestListing("${l.id}")'>Request</button>
-    <button class='ghost' onclick='viewDetails("${l.id}")'>Details</button>
-  </div>
-`;
+function renderListings(){
+  const container = $('#listings'); container.innerHTML = '';
+  const search = $('#search').value.toLowerCase();
+  const category = $('#filter-category').value;
+  const filtered = state.listings.filter(l => {
+    if(category && l.category !== category) return false;
+    if(search && !(l.foodType.toLowerCase().includes(search) || l.location.toLowerCase().includes(search))) return false;
+    return l.status !== 'expired';
+  });
+  $('#list-count').textContent = filtered.length + ' items';
 
-        container.appendChild(d);
-      });
-    }
+  filtered.forEach(l => {
+    const card = document.createElement('div');
+    card.className = 'listing';
+
+    const title = document.createElement('h3');
+    title.textContent = l.foodType || '';
+    card.appendChild(title);
+
+    const meta1 = document.createElement('div');
+    meta1.className = 'meta';
+    meta1.innerHTML = `By <strong>${escapeHtml(l.donorName)}</strong> • ${escapeHtml(l.quantity)} • <span class="pill">${escapeHtml(l.category)}</span>`;
+    card.appendChild(meta1);
+
+    const meta2 = document.createElement('div');
+    meta2.className = 'meta';
+    meta2.textContent = `Pickup: ${l.location || '-'} • Expires: ${formatDate(l.expiry)}`;
+    card.appendChild(meta2);
+
+    const notes = document.createElement('p');
+    notes.style.margin = '8px 0';
+    notes.textContent = l.notes || '';
+    card.appendChild(notes);
+
+    const actions = document.createElement('div');
+    actions.style.display = 'flex';
+    actions.style.gap = '8px';
+
+    const btnReq = document.createElement('button');
+    btnReq.className = 'btn';
+    btnReq.textContent = 'Request';
+    btnReq.addEventListener('click', () => requestListing(l.id));
+    actions.appendChild(btnReq);
+
+    const btnDet = document.createElement('button');
+    btnDet.className = 'ghost';
+    btnDet.textContent = 'Details';
+    btnDet.addEventListener('click', () => viewDetails(l.id));
+    actions.appendChild(btnDet);
+
+    card.appendChild(actions);
+    container.appendChild(card);
+  });
+}
+
 
     function viewDetails(id){
       const l = state.listings.find(x=>x.id===id);
