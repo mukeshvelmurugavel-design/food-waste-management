@@ -1,0 +1,462 @@
+<!Doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FoodBase — Food Wastage Management (Demo)</title>
+  <style>
+    /* ====== Simple Reset ====== */
+    *,*::before,*::after{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,'Helvetica Neue',Arial}
+    :root{
+      --accent:#16a34a; /* green */
+      --muted:#6b7280;
+      --card:#ffffff;
+      --bg:#f3f4f6;
+      --glass: rgba(255,255,255,0.75);
+      --shadow: 0 6px 18px rgba(15,23,42,0.08);
+    }
+
+    body{background:linear-gradient(180deg,#f8fafc 0%,var(--bg) 100%);color:#0f172a;padding:24px}
+    .container{max-width:1100px;margin:0 auto}
+
+    /* Header */
+    header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-radius:14px;background:linear-gradient(90deg,#fff,#fbfffb);box-shadow:var(--shadow);backdrop-filter:blur(6px)}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#059669);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;box-shadow:0 6px 16px rgba(5,150,105,0.2)}
+    h1{font-size:18px;margin:0}
+    .nav{display:flex;gap:10px;align-items:center}
+    button.btn{border:0;padding:10px 14px;border-radius:10px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;box-shadow:0 8px 20px rgba(16,185,129,0.12)}
+    button.ghost{background:transparent;color:var(--muted);border:1px solid rgba(15,23,42,0.06);box-shadow:none}
+
+    /* Layout */
+    .main{display:grid;grid-template-columns:320px 1fr;gap:18px;margin-top:20px}
+    .card{background:var(--card);border-radius:12px;padding:16px;box-shadow:var(--shadow)}
+
+    /* Left sidebar */
+    .sidebar nav{display:flex;flex-direction:column;gap:8px}
+    .side-link{padding:10px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;text-decoration:none;color:inherit}
+    .side-link.active{background:linear-gradient(90deg,rgba(22,163,74,0.09),rgba(5,150,105,0.05));border:1px solid rgba(6,95,70,0.06)}
+
+    /* Listing cards */
+    .listings{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+    .listing{border-radius:10px;padding:12px;background:linear-gradient(180deg,#ffffff,#fbfffb);box-shadow:0 8px 18px rgba(2,6,23,0.04)}
+    .listing h3{margin:0 0 6px 0}
+    .meta{font-size:13px;color:var(--muted)}
+    .pill{display:inline-block;padding:6px 8px;border-radius:999px;font-size:12px;background:rgba(6,95,70,0.06);color:#065f46}
+
+    /* Forms */
+    label{display:block;font-weight:600;font-size:13px;margin:8px 0 6px}
+    input[type=text],input[type=datetime-local],select,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #e6eaf0}
+    textarea{min-height:100px}
+    .row{display:flex;gap:8px}
+    .row > *{flex:1}
+
+    /* small utilities */
+    .muted{color:var(--muted);font-size:13px}
+    .right{margin-left:auto}
+
+    /* modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:none;align-items:center;justify-content:center;padding:20px}
+    .modal{width:100%;max-width:640px}
+
+    /* toast */
+    .toast{position:fixed;right:20px;bottom:20px;background:#0f172a;color:#fff;padding:12px 16px;border-radius:10px;box-shadow:0 8px 30px rgba(2,6,23,0.45)}
+
+    /* Responsive */
+    @media (max-width:900px){
+      .main{grid-template-columns:1fr;}
+      header{flex-direction:column;gap:10px}
+      .logo{width:44px;height:44px}
+    }
+    
+
+    /* Reports chart */
+    .chart-wrap{display:flex;gap:20px;align-items:center}
+    canvas{background:linear-gradient(180deg,#fff,#fbfffb);border-radius:10px;padding:8px}
+
+    /* footer */
+    footer{margin-top:20px;text-align:center;color:var(--muted);font-size:13px}
+
+    </style>
+
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo">FB</div>
+        <div>
+          <h1>FoodBase — Food Wastage Management</h1>
+          <div class="muted">Connecting donors with receivers • Demo frontend</div>
+        </div>
+      </div>
+      <div class="nav">
+        <button class="ghost" id="demo-login">Login</button>
+        <button class="btn" id="demo-register">Register</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <aside class="card sidebar">
+        <nav>
+          <a class="side-link active" data-view="home">Home <span class="pill">Browse</span></a>
+          <a class="side-link" data-view="add">Add Listing</a>
+          <a class="side-link" data-view="requests">Requests <span class="pill" id="pending-count">0</span></a>
+          <a class="side-link" data-view="reports">Reports</a>
+          <a class="side-link" data-view="admin">Admin</a>
+        </nav>
+        <hr style="margin:12px 0;border:none;border-top:1px solid #eef2f6">
+        <div>
+          <label>Search</label>
+          <input id="search" type="text" placeholder="search by food type or location">
+          <div style="margin-top:10px">
+            <label>Category</label>
+            <select id="filter-category">
+              <option value="">All</option>
+              <option>Meals</option>
+              <option>Vegetarian</option>
+              <option>Baked Goods</option>
+              <option>Fruits</option>
+            </select>
+          </div>
+        </div>
+      </aside>
+
+      <section>
+        <!-- Home / Listings -->
+        <div class="card" id="view-home">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <h2 style="margin:0">Available Food Listings</h2>
+            <div class="muted" id="list-count">0 items</div>
+            <div class="right"><button class="btn" id="btn-refresh">Refresh</button></div>
+          </div>
+
+          <div style="margin-top:12px" class="listings" id="listings"></div>
+
+          <div style="margin-top:12px;color:var(--muted);font-size:13px">
+            Welcome! Browse all available food donations here. Use filters or search to find items quickly.
+          </div>
+        </div>
+
+        <!-- Add Listing Form -->
+        <div class="card" id="view-add" style="display:none">
+          <h2>Add / Edit Listing</h2>
+          <form id="listing-form">
+            <label>Donor Name</label>
+            <input type="text" id="donor-name" required placeholder="Restaurant or person name">
+
+            <label>Food Type</label>
+            <input type="text" id="food-type" required placeholder="e.g., Cooked meals, Fruits">
+
+            <div class="row">
+              <div>
+                <label>Quantity</label>
+                <input type="text" id="quantity" placeholder="e.g., 10 meals, 5 kg">
+              </div>
+              <div>
+                <label>Expiry / Pickup By</label>
+                <input type="datetime-local" id="expiry">
+              </div>
+            </div>
+
+            <label>Pickup Address / Location</label>
+            <input type="text" id="location" placeholder="Street, City">
+
+            <label>Category</label>
+            <select id="category">
+              <option>Meals</option>
+              <option>Vegetarian</option>
+              <option>Baked Goods</option>
+              <option>Fruits</option>
+            </select>
+
+            <label>Additional Notes</label>
+            <textarea id="notes" placeholder="Any special info (allergies, packaging) ..."></textarea>
+
+            <div style="margin-top:12px;display:flex;gap:8px">
+              <button class="btn" type="submit">Save Listing</button>
+              <button class="ghost" id="cancel-edit" type="button">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Requests -->
+        <div class="card" id="view-requests" style="display:none">
+          <h2>Requests</h2>
+          <div id="requests-list"></div>
+        </div>
+
+        <!-- Reports -->
+        <div class="card" id="view-reports" style="display:none">
+          <h2>Reports</h2>
+          <div class="chart-wrap">
+            <div style="flex:1">
+              <h4 style="margin:6px 0">Donations by Category (demo)</h4>
+              <canvas id="chart-category" width="400" height="220"></canvas>
+            </div>
+            <div style="flex:1">
+              <h4 style="margin:6px 0">Daily Distribution (last 7 days)</h4>
+              <canvas id="chart-daily" width="400" height="220"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin -->
+        <div class="card" id="view-admin" style="display:none">
+          <h2>Admin Panel</h2>
+          <div class="muted">Approve or block donor accounts and requests (demo).</div>
+          <div style="margin-top:12px">
+            <h4>Users</h4>
+            <div id="admin-users"></div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <footer>
+      Save Food, Share Meals — Every donation counts!
+    </footer>
+  </div>
+
+  <!-- Modal: Login/Register (demo) -->
+  <div class="modal-backdrop" id="modal" aria-hidden="true">
+    <div class="modal card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3 id="modal-title">Login</h3>
+        <button class="ghost" id="close-modal">Close</button>
+      </div>
+
+      <div id="modal-body">
+        <form id="auth-form">
+          <label>Role</label>
+          <select id="auth-role"><option>Donor</option><option>Receiver</option><option>Admin</option></select>
+          <label>Name</label>
+          <input id="auth-name" type="text" required>
+          <label>Email</label>
+          <input id="auth-email" type="text" required>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button class="btn" type="submit">Continue</button>
+            <button class="ghost" id="switch-auth" type="button">Switch to Register</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toast-area"></div>
+
+  <script>
+    /* ======= Simple demo app storing data in localStorage ======= */
+
+    // Utilities
+    const $ = (s, root=document) => root.querySelector(s);
+    const $$ = (s, root=document) => Array.from(root.querySelectorAll(s));
+
+  let state = {
+  user: null,  // {name, email, role}
+  listings: [],
+  requests: [],
+  users: []
+};
+
+
+    // Persistence keys
+    const LS = {
+      listings: 'fb_listings_v1',
+      requests: 'fb_requests_v1',
+      users: 'fb_users_v1'
+    };
+
+    // load/save
+    function load(){
+      state.listings = JSON.parse(localStorage.getItem(LS.listings) || '[]');
+      state.requests = JSON.parse(localStorage.getItem(LS.requests) || '[]');
+      state.users = JSON.parse(localStorage.getItem(LS.users) || '[]');
+    }
+    function save(){
+      localStorage.setItem(LS.listings, JSON.stringify(state.listings));
+      localStorage.setItem(LS.requests, JSON.stringify(state.requests));
+      localStorage.setItem(LS.users, JSON.stringify(state.users));
+    }
+
+    // Simple toast
+    function toast(msg, time=3000){
+      const t = document.createElement('div');
+      t.className='toast'; t.textContent = msg; document.getElementById('toast-area').appendChild(t);
+      setTimeout(()=>{t.remove();}, time);
+    }
+
+    // Render listings
+    function renderListings(){
+      const container = $('#listings'); container.innerHTML='';
+      const search = $('#search').value.toLowerCase();
+      const category = $('#filter-category').value;
+      const filtered = state.listings.filter(l => {
+        if(category && l.category !== category) return false;
+        if(search && !(l.foodType.toLowerCase().includes(search) || l.location.toLowerCase().includes(search))) return false;
+        return l.status !== 'expired';
+      });
+      $('#list-count').textContent = filtered.length + ' items';
+      filtered.forEach(l => {
+        const d = document.createElement('div'); d.className='listing';
+        d.innerHTML = `
+  <h3>${escapeHtml(l.foodType)}</h3>
+  <div class="meta">By ${escapeHtml(l.donorName)} • ${escapeHtml(l.quantity)} • <span class="pill">${escapeHtml(l.category)}</span></div>
+  <div class="meta">Pickup: ${escapeHtml(l.location)} • Expires: ${formatDate(l.expiry)}</div>
+  <p style="margin:8px 0">${escapeHtml(l.notes || '')}</p>
+  <div style="display:flex;gap:8px;margin-top:8px">
+    <button class="btn" data-id="${l.id}" onclick="requestListing('${l.id}')">Request</button>
+    <button class="ghost" onclick="viewDetails('${l.id}')">Details</button>
+  </div>
+`;
+        container.appendChild(d);
+      });
+    }
+
+    function viewDetails(id){
+      const l = state.listings.find(x=>x.id===id);
+      if(!l) return toast('Listing not found');
+      alert(`Listing details:\n\nFood: ${l.foodType}\nDonor: ${l.donorName}\nQty: ${l.quantity}\nLocation: ${l.location}\nExpiry: ${formatDate(l.expiry)}\nNotes: ${l.notes}`);
+    }
+
+    function requestListing(id){
+      if(!state.user){toast('Please login to request items'); openModal('Login'); return}
+      const listing = state.listings.find(x=>x.id===id);
+      if(!listing) return toast('Listing missing');
+      const req = {id:'req_'+Date.now(), listingId:id, receiverId:state.user.email, status:'pending', date: new Date().toISOString()};
+      state.requests.push(req); save(); renderRequests(); toast('Request created — admin will coordinate'); updatePendingCount();
+    }
+
+    function renderRequests(){
+      const container = $('#requests-list'); container.innerHTML='';
+      if(state.requests.length===0){container.textContent='No requests yet.';return}
+      state.requests.forEach(r=>{
+        const l = state.listings.find(x=>x.id===r.listingId) || {foodType:'(missing)'};
+        const el = document.createElement('div'); el.style.padding='10px'; el.style.borderBottom='1px dashed #eef2f6';
+        el.innerHTML = `<strong>\${escapeHtml(l.foodType)}</strong> — requested by <em>\${escapeHtml(r.receiverId)}</em> <div class='muted'>Status: \${r.status} • \${formatDate(r.date)}</div>`;
+        if((state.user && state.user.role==='Admin')){
+          const btnApprove = document.createElement('button'); btnApprove.className='btn'; btnApprove.textContent='Approve'; btnApprove.style.margin='8px 6px 0 0'; btnApprove.onclick = ()=>{ r.status='approved'; save(); renderRequests(); toast('Request approved'); };
+          const btnBlock = document.createElement('button'); btnBlock.className='ghost'; btnBlock.textContent='Reject'; btnBlock.onclick = ()=>{ r.status='rejected'; save(); renderRequests(); toast('Request rejected'); };
+          el.appendChild(btnApprove); el.appendChild(btnBlock);
+        }
+        container.appendChild(el);
+      });
+    }
+
+    function updatePendingCount(){
+      const pending = state.requests.filter(r=>r.status==='pending').length; $('#pending-count').textContent = pending;
+    }
+
+    function renderAdminUsers(){
+      const container = $('#admin-users'); container.innerHTML='';
+      if(state.users.length===0){container.textContent='No users yet.';return}
+      state.users.forEach(u=>{
+        const el = document.createElement('div'); el.style.display='flex'; el.style.alignItems='center'; el.style.justifyContent='space-between'; el.style.padding='8px 0';
+        el.innerHTML = `<div><strong>\${escapeHtml(u.name)}</strong> <div class='muted'>\${u.role} • \${u.email}</div></div>`;
+        const actions = document.createElement('div');
+        const btnApprove = document.createElement('button'); btnApprove.className='btn'; btnApprove.textContent = u.status==='approved'? 'Block':'Approve';
+        btnApprove.onclick = ()=>{ u.status = u.status==='approved'?'blocked':'approved'; save(); renderAdminUsers(); toast('User status updated'); };
+        actions.appendChild(btnApprove);
+        el.appendChild(actions);
+        container.appendChild(el);
+      });
+    }
+
+    // Helpers
+    function formatDate(iso){ if(!iso) return '-'; try{ const d=new Date(iso); return d.toLocaleString(); }catch(e){return iso} }
+    function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
+
+    // Charts (simple draw)
+    function drawCategoryChart(){
+      const counts = {};
+      state.listings.forEach(l=>{counts[l.category]= (counts[l.category]||0)+1});
+      const labels = Object.keys(counts); const values = labels.map(k=>counts[k]);
+      const c = document.getElementById('chart-category'); const ctx = c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
+      // draw bars
+      const padding=40; const w=c.width; const h=c.height; const max = Math.max(1, ...values);
+      labels.forEach((lab,i)=>{
+        const bw = (w - padding*2) / labels.length * 0.6; const gap = ((w - padding*2) / labels.length) - bw; const x = padding + i*((bw)+gap);
+        const barH = (values[i]/max) * (h - padding*1.4);
+        ctx.fillStyle = '#16a34a'; ctx.fillRect(x, h - padding - barH, bw, barH);
+        ctx.fillStyle = '#0f172a'; ctx.font='12px sans-serif'; ctx.fillText(lab, x, h - padding + 14);
+        ctx.fillText(values[i], x, h - padding - barH - 6);
+      });
+    }
+    function drawDailyChart(){
+      // fake last 7 days counts from requests
+      const days = 7; const now = new Date(); const labels=[]; const vals=[];
+      for(let i=days-1;i>=0;i--){ const d = new Date(now); d.setDate(now.getDate()-i); labels.push(d.toLocaleDateString()); vals.push(Math.floor(Math.random()*6)); }
+      const c = document.getElementById('chart-daily'); const ctx = c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
+      const padding=30; const w=c.width; const h=c.height; const max = Math.max(1,...vals);
+      ctx.beginPath(); ctx.moveTo(padding, h-padding - (vals[0]/max)*(h-padding*1.2));
+      vals.forEach((v,i)=>{ const x = padding + i*((w-padding*2)/(vals.length-1)); const y = h-padding - (v/max)*(h-padding*1.2); ctx.lineTo(x,y); ctx.fillStyle='#16a34a'; ctx.strokeStyle='#16a34a'; ctx.stroke(); ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.moveTo(x,y); });
+      // x labels
+      ctx.fillStyle='#0f172a'; ctx.font='11px sans-serif'; labels.forEach((l,i)=>{ const x = padding + i*((w-padding*2)/(vals.length-1)); ctx.fillText(l, x-18, h-8); });
+    }
+
+    // View switching
+    function switchView(view){
+      const views = ['home','add','requests','reports','admin'];
+      views.forEach(v=>{ $('#view-'+v).style.display = (v===view)?'block':'none'; $$(`.side-link`).forEach(el=>{ el.classList.toggle('active', el.dataset.view===view); }); });
+      if(view==='reports'){ drawCategoryChart(); drawDailyChart(); }
+      if(view==='requests') renderRequests();
+      if(view==='admin') renderAdminUsers();
+    }
+
+    // Modal
+    function openModal(mode='Login'){ $('#modal-title').textContent=mode; $('#modal').style.display='flex'; $('#modal').setAttribute('aria-hidden','false'); }
+    function closeModal(){ $('#modal').style.display='none'; $('#modal').setAttribute('aria-hidden','true'); }
+
+    // Auth (demo)
+    function authSubmit(e){ e.preventDefault(); const name = $('#auth-name').value.trim(); const email = $('#auth-email').value.trim(); const role = $('#auth-role').value; if(!name||!email){toast('Please fill name & email');return}
+      const user = {name,email,role,status:'approved'}; state.user = user; // create in users if not exists
+      if(!state.users.find(u=>u.email===email)){ state.users.push(user); }
+      save(); closeModal(); toast('Logged in as '+name); renderAdminUsers(); updatePendingCount();
+    }
+
+    // Listing form
+    function listingFormSubmit(e){ e.preventDefault(); const id = 'l_'+Date.now(); const l = {
+      id,
+      donorName: $('#donor-name').value||'Anonymous',
+      foodType: $('#food-type').value||'Food',
+      quantity: $('#quantity').value||'1',
+      expiry: $('#expiry').value || new Date(Date.now()+1000*60*60*6).toISOString(),
+      location: $('#location').value||'Unknown',
+      category: $('#category').value||'Meals',
+      notes: $('#notes').value||'',
+      status:'available'
+    };
+    state.listings.unshift(l); save(); toast('Listing saved'); $('#listing-form').reset(); switchView('home'); renderListings(); }
+
+    // Helpers to refresh expiration statuses
+    function checkExpiry(){ const now = Date.now(); state.listings.forEach(l=>{ const t = Date.parse(l.expiry||0); if(t && t < now){ l.status = 'expired'; } }); save(); }
+
+    // Bind events & initial
+    document.addEventListener('DOMContentLoaded',()=>{
+      load(); checkExpiry(); renderListings(); renderRequests(); renderAdminUsers(); updatePendingCount();
+
+      // nav
+      $$('.side-link').forEach(el=> el.addEventListener('click', ()=> switchView(el.dataset.view)));
+      $('#btn-refresh').addEventListener('click', ()=>{ load(); checkExpiry(); renderListings(); renderRequests(); drawCategoryChart(); drawDailyChart(); toast('Refreshed'); });
+      $('#search').addEventListener('input', renderListings); $('#filter-category').addEventListener('change', renderListings);
+
+      // listing form
+      $('#listing-form').addEventListener('submit', listingFormSubmit); $('#cancel-edit').addEventListener('click', ()=>{ $('#listing-form').reset(); switchView('home'); });
+
+      // auth modal
+      $('#demo-login').addEventListener('click', ()=>openModal('Login'));
+      $('#demo-register').addEventListener('click', ()=>openModal('Register'));
+      $('#close-modal').addEventListener('click', closeModal);
+      $('#auth-form').addEventListener('submit', authSubmit);
+      $('#switch-auth').addEventListener('click', ()=>{ const t = $('#modal-title').textContent; $('#modal-title').textContent = t==='Login'?'Register':'Login'; });
+
+    });
+
+    // small safety: escape window functions we're using in markup
+    window.requestListing = requestListing; window.viewDetails = viewDetails;
+
+  </script>
+</body>
+</html>
