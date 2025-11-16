@@ -301,16 +301,18 @@
       $('#list-count').textContent = filtered.length + ' items';
       filtered.forEach(l => {
         const d = document.createElement('div'); d.className='listing';
-        d.innerHTML = `
+        // Replace your current d.innerHTML block with this exact code:
+d.innerHTML = `
   <h3>${escapeHtml(l.foodType)}</h3>
-  <div class="meta">By ${escapeHtml(l.donorName)} • ${escapeHtml(l.quantity)} • <span class="pill">${escapeHtml(l.category)}</span></div>
-  <div class="meta">Pickup: ${escapeHtml(l.location)} • Expires: ${formatDate(l.expiry)}</div>
-  <p style="margin:8px 0">${escapeHtml(l.notes || '')}</p>
-  <div style="display:flex;gap:8px;margin-top:8px">
-    <button class="btn" data-id="${l.id}" onclick="requestListing('${l.id}')">Request</button>
-    <button class="ghost" onclick="viewDetails('${l.id}')">Details</button>
+  <div class='meta'>By ${escapeHtml(l.donorName)} • ${escapeHtml(l.quantity)} • <span class='pill'>${escapeHtml(l.category)}</span></div>
+  <div class='meta'>Pickup: ${escapeHtml(l.location)} • Expires: ${formatDate(l.expiry)}</div>
+  <p style='margin:8px 0'>${escapeHtml(l.notes || '')}</p>
+  <div style='display:flex;gap:8px;margin-top:8px'>
+    <button class='btn' data-id='${l.id}' onclick='requestListing("${l.id}")'>Request</button>
+    <button class='ghost' onclick='viewDetails("${l.id}")'>Details</button>
   </div>
 `;
+
         container.appendChild(d);
       });
     }
